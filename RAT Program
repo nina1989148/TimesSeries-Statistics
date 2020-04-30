@@ -3,7 +3,7 @@ CALENDAR(A) 1971
 ALL 2014:01
 DATA(FORMAT=XLS,ORG=COLUMNS) 1971:01 2014:01 year co energy_use GDP Population GDP_per Inflation Trade $
  haha REAL_GDP
-
+ 
 set lco = log(co)
 set le = log(energy_use)
 set lt = log(trade)

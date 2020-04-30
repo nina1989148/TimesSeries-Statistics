@@ -1,0 +1,65 @@
+open data datass.xls
+CALENDAR(A) 1971
+ALL 2014:01
+DATA(FORMAT=XLS,ORG=COLUMNS) 1971:01 2014:01 year co energy_use GDP Population GDP_per Inflation Trade $
+ haha REAL_GDP
+
+set lco = log(co)
+set le = log(energy_use)
+set lt = log(trade)
+set lrgdp = log(real_gdp)
+set Srgdp = (lrgdp)^2
+
+@dfunit(det=trend,lags=4) lco
+@dfunit(det=trend,lags=2) le
+@dfunit(det=trend,lags=0) lt
+@dfunit(det=trend,lags=4) lrgdp
+@dfunit(det=trend,lags=1) Srgdp
+
+@adfautoselect(det=trend,maxlags=4,print) lco
+@adfautoselect(det=trend,maxlags=4,print) le
+@adfautoselect(det=trend,maxlags=4,print) lt
+@adfautoselect(det=trend,maxlags=4,print) lrgdp
+@adfautoselect(det=trend,maxlags=4,print) Srgdp
+
+
+set Dlco = lco-lco{1}
+set Dle = le-le{1}
+set Dlt = lt-lt{1}
+set Dlrgdp = lrgdp-lrgdp{1}
+set DSrgdp = Srgdp-Srgdp{1}
+
+@dfunit(det=trend,lags=3) DLCO
+@dfunit(det=trend,lags=0) Dle
+@dfunit(det=trend,lags=1) Dlt
+@dfunit(det=trend,lags=4) Dlrgdp
+@dfunit(det=trend,lags=4) DSrgdp
+
+@adfautoselect(det=trend,maxlags=4,print) Dlco
+@adfautoselect(det=trend,maxlags=4,print) Dle
+@adfautoselect(det=trend,maxlags=4,print) Dlt
+@adfautoselect(det=trend,maxlags=4,print) Dlrgdp
+@adfautoselect(det=trend,maxlags=4,print) DSrgdp
+
+nonlin a0 a1 a2 a3 a4 delta
+frml frml_co co = a0 + a1*le + a2*lrgdp + a3*Srgdp + a4*lt ^delta
+compute a0=%beta(1), a1=%beta(1), a2=%beta(2), a3=%beta(3), a4=%beta(4), delta=1.0
+nlls(frml=frml_co) co
+
+
+nonlin(parmset=baseparms) a0 a1 a2 a3 a4 delta
+nonlin(parmset=tparms) sigsq nu
+compute sigsq=%seesq, nu=20.0
+frml logl = %logtdensity(sigsq,co-frml_co,nu)
+maximize(parmset=baseparms+tparms) logl 
+cdf(title="LR Test for delta=1") chisqr 2*(%seesq-sigsq) 2
+compute loglunr=%logl
+
+do i = 0,4
+	linreg DLCO
+	#DLCO{1 to i}
+	com aic = -2.0*%logl + %nreg*2
+	com sbc = -2.0*%logl + %nreg*log(%nobs) 
+	dis "Lags: " i "T-stat" %tstats(1) "The aic = " aic " and sbc = " sbc
+	cdf(title="Test for ARCH") chisqr %trsquared i
+end do i
